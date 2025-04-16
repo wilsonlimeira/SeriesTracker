@@ -11,15 +11,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -68,6 +72,9 @@ fun TVSeriesTrackerApp(viewModel: SeriesViewModel) {
     var seriesName by remember { mutableStateOf("") }
     var seasons by remember { mutableStateOf("") }
     var episodesPerSeason by remember { mutableStateOf("") }
+    var isManualMode by remember { mutableStateOf(false) }
+    var customSeasons by remember { mutableStateOf<Map<Int, Int>>(emptyMap()) }
+    var episodesInCurrentSeason by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -146,21 +153,117 @@ fun TVSeriesTrackerApp(viewModel: SeriesViewModel) {
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = isManualMode,
+                        onCheckedChange = {
+                            isManualMode = it
+                            if (!it) {
+                                customSeasons = emptyMap()
+                            }
+                        }
+                    )
+                    Text("Manually add episodes per season")
+                }
+
+                if (isManualMode && seasons.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Column {
+                        // Display added seasons
+                        customSeasons.forEach { (season, episodes) ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Season $season: $episodes episodes")
+                                IconButton(onClick = {
+                                    customSeasons = customSeasons - season
+                                }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Remove season")
+                                }
+                            }
+                        }
+
+                        // Add new season if not all seasons are added
+                        if (customSeasons.size < (seasons.toIntOrNull() ?: 0)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Season ${customSeasons.size + 1}: ", fontWeight = FontWeight.Medium)
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                OutlinedTextField(
+                                    value = episodesInCurrentSeason,
+                                    onValueChange = {
+                                        if (it.isEmpty() || it.matches(Regex("^\\d+$"))) {
+                                            episodesInCurrentSeason = it
+                                        }
+                                    },
+                                    label = { Text("Episodes") },
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                IconButton(
+                                    onClick = {
+                                        if (episodesInCurrentSeason.isNotEmpty()) {
+                                            val currentSeasonNumber = customSeasons.size + 1
+                                            customSeasons = customSeasons + (currentSeasonNumber to episodesInCurrentSeason.toInt())
+                                            episodesInCurrentSeason = ""
+                                        }
+                                    }
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = "Add season")
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Button(
                     onClick = {
-                        if (seriesName.isNotBlank() && seasons.isNotBlank() && episodesPerSeason.isNotBlank()) {
-                            viewModel.addSeries(
-                                TVSeries(
-                                    name = seriesName,
-                                    totalSeasons = seasons.toInt(),
-                                    episodesPerSeason = episodesPerSeason.toInt()
-                                )
-                            )
+                        if (seriesName.isNotBlank() && seasons.isNotBlank()) {
+                            if (isManualMode) {
+                                // For manual mode, use the custom seasons map
+                                if (customSeasons.isNotEmpty()) {
+                                    viewModel.addSeriesWithCustomSeasons(
+                                        name = seriesName,
+                                        totalSeasons = seasons.toInt(),
+                                        seasonsEpisodeMap = customSeasons
+                                    )
+                                }
+                            } else {
+                                // For non-manual mode, use the same episodes per season
+                                if (episodesPerSeason.isNotBlank()) {
+                                    viewModel.addSeries(
+                                        TVSeries(
+                                            name = seriesName,
+                                            totalSeasons = seasons.toInt(),
+                                            episodesPerSeason = episodesPerSeason.toInt()
+                                        )
+                                    )
+                                }
+                            }
+
+                            // Clear all fields
                             seriesName = ""
                             seasons = ""
                             episodesPerSeason = ""
+                            isManualMode = false
+                            customSeasons = emptyMap()
+                            episodesInCurrentSeason = ""
                         }
                     },
                     modifier = Modifier.align(Alignment.End)

@@ -9,7 +9,8 @@ data class TVSeries(
     val id: Int = 0,
     val name: String,
     val totalSeasons: Int,
-    val episodesPerSeason: Int,
+    val episodesPerSeason: Int? = null,  // Optional for regular series
+    val seasonEpisodeMap: Map<Int, Int>? = null,  // For series with different episodes per season
     val currentSeason: Int = 1,
     val currentEpisode: Int = 1,
     val isCompleted: Boolean = false
@@ -26,7 +27,18 @@ class SeriesViewModel : ViewModel() {
 
     fun addSeries(series: TVSeries) {
         val newSeries = series.copy(id = nextId++)
-        _series.value = _series.value + newSeries
+        _series.value += newSeries
+    }
+
+    fun addSeriesWithCustomSeasons(name: String, totalSeasons: Int, seasonsEpisodeMap: Map<Int, Int>) {
+        val newSeries = TVSeries(
+            id = nextId++,
+            name = name,
+            totalSeasons = totalSeasons,
+            seasonEpisodeMap = seasonsEpisodeMap,
+            episodesPerSeason = null  // Not used for custom seasons
+        )
+        _series.value += newSeries
     }
 
     fun incrementEpisode(series: TVSeries) {
@@ -42,14 +54,20 @@ class SeriesViewModel : ViewModel() {
             var completed = false
 
             // Check if we need to move to the next season
-            if (newEpisode > currentSeries.episodesPerSeason) {
+            val episodesInCurrentSeason = if (currentSeries.seasonEpisodeMap != null) {
+                currentSeries.seasonEpisodeMap[currentSeries.currentSeason] ?: 0
+            } else {
+                currentSeries.episodesPerSeason ?: 0
+            }
+
+            if (newEpisode > episodesInCurrentSeason) {
                 newEpisode = 1
                 newSeason++
 
                 // Check if we've completed all seasons
                 if (newSeason > currentSeries.totalSeasons) {
                     newSeason = currentSeries.totalSeasons
-                    newEpisode = currentSeries.episodesPerSeason
+                    newEpisode = episodesInCurrentSeason
                     completed = true
                 }
             }
