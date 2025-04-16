@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Series Tracker</string>
+    <string name="title_activity_main">MainActivity</string>
+    <string name="title_activity_test">Test</string>
+</resources>
