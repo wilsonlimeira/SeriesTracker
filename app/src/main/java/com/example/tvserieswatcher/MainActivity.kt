@@ -1,5 +1,6 @@
 package com.example.tvserieswatcher
 
+import android.app.Application
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -345,7 +346,7 @@ fun SeriesItem(series: TVSeries, onIncrementEpisode: () -> Unit) {
 @Preview(showBackground = true, name = "TV Series Tracker App Preview")
 @Composable
 fun TVSeriesTrackerAppPreview() {
-    val mockViewModel: SeriesViewModel = SeriesViewModel().apply {
+    val mockViewModel: SeriesViewModel = SeriesViewModel(application = Application()).apply {
         addSeries(TVSeries(8, "Game of Thrones", 8, 10))
         addSeries(TVSeries(5, "Breaking Bad", 5, 16))
         addSeries(TVSeries(9, "The Office", 9, 24))
