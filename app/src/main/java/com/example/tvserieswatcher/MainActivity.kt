@@ -37,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -93,9 +94,9 @@ fun TVSeriesTrackerApp(viewModel: SeriesViewModel) {
 
             IconButton(onClick = { viewModel.toggleTheme() }) {
                 Icon(
-                    painter = androidx.compose.ui.res.painterResource(
+                    painter = painterResource(
                         id = if (isDarkTheme) R.drawable.baseline_dark_mode_24_white
-                                else R.drawable.baseline_dark_mode_24
+                        else R.drawable.baseline_dark_mode_24
                     ),
 
                     contentDescription = "Toggle theme"
@@ -291,14 +292,24 @@ fun TVSeriesTrackerApp(viewModel: SeriesViewModel) {
             modifier = Modifier.weight(1f)
         ) {
             items(series) { tvSeries ->
-                SeriesItem(tvSeries) { viewModel.incrementEpisode(tvSeries) }
+                SeriesItem(
+                    series = tvSeries,
+                    onIncrementEpisode = { viewModel.incrementEpisode(tvSeries) },
+                    onDecrementEpisode = { viewModel.decrementEpisode(tvSeries) },
+                    onDeleteSeries = { viewModel.deleteSeries(tvSeries) }
+                )
             }
         }
     }
 }
 
 @Composable
-fun SeriesItem(series: TVSeries, onIncrementEpisode: () -> Unit) {
+fun SeriesItem(
+    series: TVSeries,
+    onIncrementEpisode: () -> Unit,
+    onDecrementEpisode: () -> Unit,
+    onDeleteSeries: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -312,7 +323,7 @@ fun SeriesItem(series: TVSeries, onIncrementEpisode: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = series.name,
                     fontWeight = FontWeight.Bold,
@@ -326,18 +337,61 @@ fun SeriesItem(series: TVSeries, onIncrementEpisode: () -> Unit) {
                     fontSize = 14.sp
                 )
 
+                val episodeCount = if (series.seasonEpisodeMap != null) {
+                    series.seasonEpisodeMap.values.sum()
+                } else {
+                    series.totalSeasons * (series.episodesPerSeason ?: 0)
+                }
+
                 Text(
-                    text = "Total: ${series.totalSeasons} seasons, ${series.episodesPerSeason} episodes per season",
+                    text = "Total: ${series.totalSeasons} seasons, $episodeCount episodes",
                     fontSize = 12.sp
                 )
+
+                if (series.isCompleted) {
+                    Text(
+                        text = "Completed!",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.sp
+                    )
+                }
             }
 
-            IconButton(onClick = onIncrementEpisode) {
-                Icon(
-                    imageVector = Icons.Default.AddCircle,
-                    contentDescription = "Watch next episode",
-                    tint = MaterialTheme.colorScheme.primary
-                )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Decrement button
+                IconButton(onClick = onDecrementEpisode) {
+                    Icon(
+                        painter = painterResource(
+                            id = R.drawable.baseline_remove_circle_24
+                        ),
+                        contentDescription = "Previous episode",
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
+                }
+
+                // Increment button
+                IconButton(onClick = onIncrementEpisode) {
+                    Icon(
+                        imageVector = Icons.Default.AddCircle,
+                        contentDescription = "Next episode",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                // Delete button - shows only when series is completed
+                if (series.isCompleted) {
+                    IconButton(onClick = onDeleteSeries) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete series",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
             }
         }
     }

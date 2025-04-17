@@ -2,11 +2,18 @@ package com.example.tvserieswatcher
 
 import android.app.Application
 import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.*
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -79,7 +86,7 @@ class SeriesViewModel(application: Application) : AndroidViewModel(application) 
 
     fun addSeries(series: TVSeries) {
         val newSeries = series.copy(id = nextId++)
-        _series.value = _series.value + newSeries
+        _series.value += newSeries
         saveSeries()
     }
 
@@ -91,7 +98,7 @@ class SeriesViewModel(application: Application) : AndroidViewModel(application) 
             seasonEpisodeMap = seasonsEpisodeMap,
             episodesPerSeason = null
         )
-        _series.value = _series.value + newSeries
+        _series.value += newSeries
         saveSeries()
     }
 
@@ -132,6 +139,52 @@ class SeriesViewModel(application: Application) : AndroidViewModel(application) 
             _series.value = seriesList
             saveSeries()
         }
+    }
+
+    fun decrementEpisode(series: TVSeries) {
+        val seriesList = _series.value.toMutableList()
+        val seriesIndex = seriesList.indexOfFirst { it.id == series.id }
+
+        if (seriesIndex != -1) {
+            val currentSeries = seriesList[seriesIndex]
+
+            // Calculate previous episode/season
+            var newEpisode = currentSeries.currentEpisode - 1
+            var newSeason = currentSeries.currentSeason
+
+            // Check if we need to move to the previous season
+            if (newEpisode < 1) {
+                newSeason--
+
+                // If we go below season 1, stay at episode 1 of season 1
+                if (newSeason < 1) {
+                    newSeason = 1
+                    newEpisode = 1
+                } else {
+                    // Get episodes in the previous season
+                    newEpisode = if (currentSeries.seasonEpisodeMap != null) {
+                        currentSeries.seasonEpisodeMap[newSeason] ?: 0
+                    } else {
+                        currentSeries.episodesPerSeason ?: 0
+                    }
+                }
+            }
+
+            // Update the series
+            seriesList[seriesIndex] = currentSeries.copy(
+                currentSeason = newSeason,
+                currentEpisode = newEpisode,
+                isCompleted = false  // If we're decrementing, we're no longer completed
+            )
+
+            _series.value = seriesList
+            saveSeries()
+        }
+    }
+
+    fun deleteSeries(series: TVSeries) {
+        _series.value = _series.value.filter { it.id != series.id }
+        saveSeries()
     }
 
     fun toggleTheme() {
