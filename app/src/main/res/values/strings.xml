@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">Series Tracker</string>
+    <string name="app_name">TV Series Tracker</string>
     <string name="title_activity_main">MainActivity</string>
 </resources>
